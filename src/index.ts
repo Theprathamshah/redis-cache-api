@@ -11,14 +11,33 @@ app.get('/', async (c) => {
 })
 
 app.post('/users', async (c) => {
-  const { name } = await c.req.json()
+  const { name, email, password } = await c.req.json()
 
   const result = await pool.query(
-    'INSERT INTO users (name) VALUES ($1) RETURNING *',
-    [name]
+    'INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING *',
+    [name, email, password]
   )
 
   const user = result.rows[0]
+
+  return c.json({
+    source: 'postgres',
+    data: user,
+  })
+})
+
+app.patch('/users/:id', async (c) => {
+  const id = c.req.param('id')
+  const { name, email, password } = await c.req.json()
+
+  const result = await pool.query(
+    'UPDATE users SET name = $1, email = $2, password = $3 WHERE id = $4 RETURNING *',
+    [name, email, password, id]
+  )
+
+  const user = result.rows[0]
+
+  await redis.del(`user:${id}`)
 
   return c.json({
     source: 'postgres',
